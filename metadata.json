@@ -1,0 +1,6 @@
+{
+  "name": "IBKR Portfolio Analyzer",
+  "description": "An analytics tool that visualizes and calculates key performance and risk metrics from an Interactive Brokers activity statement CSV file, with a special focus on short option strategies.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}

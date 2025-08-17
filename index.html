@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IBKR Portfolio Analyzer</title>
+    <link rel="icon" href="data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3crect width='16' height='16' rx='3' fill='%231a202c'/%3e%3cpath d='M2 12 L6 7 L9 9 L14 4' stroke='%2338b2ac' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3e%3cpolyline points='11 4 14 4 14 7' stroke='%2338b2ac' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3e%3c/svg%3e">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'brand-bg': '#1a202c',
+              'brand-surface': '#2d3748',
+              'brand-card': '#4a5568',
+              'brand-text-primary': '#edf2f7',
+              'brand-text-secondary': '#a0aec0',
+              'brand-accent': '#38b2ac',
+              'brand-accent-hover': '#319795',
+              'brand-success': '#48bb78',
+              'brand-danger': '#f56565',
+            },
+          }
+        }
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.1.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
+    "react/": "https://esm.sh/react@^19.1.1/",
+    "recharts": "https://esm.sh/recharts@^3.1.0",
+    "react-dom": "https://esm.sh/react-dom@^19.1.1",
+    "html-to-image": "https://esm.sh/html-to-image@1.11.11"
+  }
+}
+</script>
+</head>
+  <body class="bg-brand-bg text-brand-text-primary">
+    <div id="root"></div>
+  </body>
+</html>
