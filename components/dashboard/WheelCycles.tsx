@@ -84,6 +84,26 @@ const WheelCycles: React.FC<WheelCyclesProps> = ({ wheelCycleAnalysis, formatInS
         setPendingSortConfig({ key, direction });
     };
 
+    const pendingTotals = useMemo(() => {
+        if (!wheelCycleAnalysis.pendingCycles) return { callPremium: 0, unrealizedStockPL: 0, currentTotalPL: 0 };
+        return wheelCycleAnalysis.pendingCycles.reduce((acc, cycle) => {
+            acc.callPremium += cycle.totalCallPremium;
+            acc.unrealizedStockPL += cycle.unrealizedStockPL;
+            acc.currentTotalPL += cycle.currentTotalPL;
+            return acc;
+        }, { callPremium: 0, unrealizedStockPL: 0, currentTotalPL: 0 });
+    }, [wheelCycleAnalysis.pendingCycles]);
+
+    const completedTotals = useMemo(() => {
+        if (!wheelCycleAnalysis.completedCycles) return { callPremium: 0, stockPL: 0, totalPL: 0 };
+        return wheelCycleAnalysis.completedCycles.reduce((acc, cycle) => {
+            acc.callPremium += cycle.totalCallPremium;
+            acc.stockPL += cycle.stockPL;
+            acc.totalPL += cycle.totalPL;
+            return acc;
+        }, { callPremium: 0, stockPL: 0, totalPL: 0 });
+    }, [wheelCycleAnalysis.completedCycles]);
+
     const SortableHeader: React.FC<{ sortKey: SortKeys; headerKey: string; tooltipKey: string; tooltipAlign?: 'center' | 'left' | 'right' }> = ({ sortKey, headerKey, tooltipKey, tooltipAlign }) => (
         <th className="p-2 text-sm font-semibold text-brand-text-secondary uppercase cursor-pointer" onClick={() => requestSort(sortKey)}>
             <div className="flex items-center justify-end">
@@ -194,6 +214,19 @@ const WheelCycles: React.FC<WheelCyclesProps> = ({ wheelCycleAnalysis, formatInS
                                      </React.Fragment>
                                 ))}
                             </tbody>
+                            <tfoot>
+                                <tr className="bg-brand-card/20 font-semibold">
+                                    <td colSpan={3} className="p-2">{t('dashboard.openPositions.total')}</td>
+                                    <td className="p-2 font-mono text-right text-brand-success">{formatInSelectedCurrency(pendingTotals.callPremium)}</td>
+                                    <td className="p-2"></td>
+                                    <td className={`p-2 font-mono text-right ${pendingTotals.unrealizedStockPL >= 0 ? 'text-brand-success' : 'text-brand-danger'}`}>
+                                        {formatInSelectedCurrency(pendingTotals.unrealizedStockPL)}
+                                    </td>
+                                    <td className={`p-2 font-mono text-right font-semibold ${pendingTotals.currentTotalPL >= 0 ? 'text-brand-success' : 'text-brand-danger'}`}>
+                                        {formatInSelectedCurrency(pendingTotals.currentTotalPL)}
+                                    </td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>
@@ -287,6 +320,19 @@ const WheelCycles: React.FC<WheelCyclesProps> = ({ wheelCycleAnalysis, formatInS
                                     </React.Fragment>
                                 ))}
                             </tbody>
+                            <tfoot>
+                                <tr className="bg-brand-card/20 font-semibold">
+                                    <td colSpan={4} className="p-2">{t('dashboard.openPositions.total')}</td>
+                                    <td className="p-2 font-mono text-right text-brand-success">{formatInSelectedCurrency(completedTotals.callPremium)}</td>
+                                    <td className={`p-2 font-mono text-right ${completedTotals.stockPL >= 0 ? 'text-brand-success' : 'text-brand-danger'}`}>
+                                        {formatInSelectedCurrency(completedTotals.stockPL)}
+                                    </td>
+                                    <td className={`p-2 font-mono font-semibold text-right ${completedTotals.totalPL >= 0 ? 'text-brand-success' : 'text-brand-danger'}`}>
+                                        {formatInSelectedCurrency(completedTotals.totalPL)}
+                                    </td>
+                                    <td className="p-2"></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>

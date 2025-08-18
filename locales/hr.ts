@@ -181,7 +181,8 @@ export const hr = {
             },
             assetClasses: {
                 stocks: "Dionice",
-                options: "Opcije"
+                options: "Opcije",
+                cash: "Gotovina"
             }
         },
         openPositions: {

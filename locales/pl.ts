@@ -181,7 +181,8 @@ export const pl = {
             },
             assetClasses: {
                 stocks: "Akcje",
-                options: "Opcje"
+                options: "Opcje",
+                cash: "Gotówka"
             }
         },
         openPositions: {

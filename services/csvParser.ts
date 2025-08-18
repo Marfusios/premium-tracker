@@ -478,8 +478,10 @@ function analyzeWheelCycles(trades: any[], exchangeRates: { [key: string]: numbe
 
     for (const cycleInProgress of inProgressCycles.values()) {
         const stockPosition = stockPositionsMap.get(cycleInProgress.symbol!);
-        if (stockPosition) {
-            const currentStockValue = stockPosition.value;
+        if (stockPosition && stockPosition.quantity !== 0) {
+            const pricePerShare = stockPosition.value / stockPosition.quantity;
+            const currentStockValue = pricePerShare * cycleInProgress.assignmentShares!;
+            
             const unrealizedStockPL = currentStockValue - cycleInProgress.netAssignmentCost!;
             const currentTotalPL = unrealizedStockPL + (cycleInProgress.totalCallPremium || 0);
 

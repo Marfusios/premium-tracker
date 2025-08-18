@@ -246,8 +246,12 @@ const Dashboard: React.FC<DashboardProps> = ({ data, onReset }) => {
         
         const assetClassAllocation = [
             { name: 'Stocks', value: stockValue },
-            { name: 'Options', value: optionValue }
+            { name: 'Options', value: optionValue },
         ];
+        
+        if (cashBalance > 0) {
+            assetClassAllocation.push({ name: 'Cash', value: cashBalance });
+        }
         
         const calculatePerformance = (positions: Position[]) => {
             const premium = positions.reduce((sum, p) => sum + (p.collectedPremium || 0), 0);

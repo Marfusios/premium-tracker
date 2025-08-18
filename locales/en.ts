@@ -181,7 +181,8 @@ export const en = {
             },
             assetClasses: {
                 stocks: "Stocks",
-                options: "Options"
+                options: "Options",
+                cash: "Cash"
             }
         },
         openPositions: {

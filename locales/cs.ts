@@ -181,7 +181,8 @@ export const cs = {
             },
             assetClasses: {
                 stocks: "Akcie",
-                options: "Opce"
+                options: "Opce",
+                cash: "Hotovost"
             }
         },
         openPositions: {

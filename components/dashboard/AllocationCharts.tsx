@@ -75,7 +75,7 @@ const AllocationCharts: React.FC<AllocationChartsProps> = ({ portfolioAllocation
             <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                     <Pie data={translatedAssetClassAllocation} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label={(entry) => `${(entry.percent * 100).toFixed(0)}%`}>
-                        {translatedAssetClassAllocation.map((entry, index) => <Cell key={`cell-${index}`} fill={['#38b2ac', '#4299e1'][index]} />)}
+                        {translatedAssetClassAllocation.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                     </Pie>
                     <Tooltip formatter={tooltipFormatter || defaultTooltipFormatter} />
                     <Legend />

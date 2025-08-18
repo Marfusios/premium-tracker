@@ -1,15 +1,12 @@
-
 import React, { createContext, useState, useContext, ReactNode, useCallback, useMemo, useEffect } from 'react';
 import { en } from '../locales/en';
 import { cs } from '../locales/cs';
 import { es } from '../locales/es';
-import { de } from '../locales/de';
-import { fr } from '../locales/fr';
 import { pl } from '../locales/pl';
 import { hr } from '../locales/hr';
 import { uk } from '../locales/uk';
 
-type Language = 'en' | 'cs' | 'es' | 'de' | 'fr' | 'pl' | 'hr' | 'uk';
+type Language = 'en' | 'cs' | 'es' | 'pl' | 'hr' | 'uk';
 
 interface LocalizationContextType {
   language: Language;
@@ -20,7 +17,7 @@ interface LocalizationContextType {
 
 const LocalizationContext = createContext<LocalizationContextType | undefined>(undefined);
 
-const translations = { en, cs, es, de, fr, pl, hr, uk };
+const translations = { en, cs, es, pl, hr, uk };
 
 const getInitialLanguage = (): Language => {
     try {
@@ -50,8 +47,6 @@ export const LocalizationProvider: React.FC<{ children: ReactNode }> = ({ childr
     switch(language) {
         case 'cs': return 'cs-CZ';
         case 'es': return 'es-ES';
-        case 'de': return 'de-DE';
-        case 'fr': return 'fr-FR';
         case 'pl': return 'pl-PL';
         case 'hr': return 'hr-HR';
         case 'uk': return 'uk-UA';
