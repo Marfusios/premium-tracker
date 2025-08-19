@@ -321,7 +321,7 @@ function analyzeMonthlySummary(
 
 function analyzeWheelCycles(trades: any[], exchangeRates: { [key: string]: number }, baseCurrency: string, instrumentMultipliers: Map<string, number>, openPositions: Position[]): WheelCycleAnalysis {
     const completedCycles: WheelCycle[] = [];
-    const stockLots = new Map<string, { quantity: number; costBasis: number; acquisitionDate: Date; covered: boolean }[]>();
+    const stockLots = new Map<string, { quantity: number; costBasis: number; acquisitionDate: Date; coveredShares: number }[]>();
     const inProgressCycles = new Map<string, Partial<WheelCycle> & { lotIndex: number }>();
     const openShortPuts = new Map<string, any[]>();
 
@@ -385,7 +385,7 @@ function analyzeWheelCycles(trades: any[], exchangeRates: { [key: string]: numbe
                     quantity: sharesAcquired,
                     costBasis: effectiveCostBasis,
                     acquisitionDate: trade.parsedDate,
-                    covered: false
+                    coveredShares: 0
                 };
                 stockLots.get(baseSymbol)?.push(newLot);
                 const lotIndex = stockLots.get(baseSymbol)!.length - 1;
@@ -421,7 +421,7 @@ function analyzeWheelCycles(trades: any[], exchangeRates: { [key: string]: numbe
                 const grossStockCostBasis = (strikePrice! * sharesAcquired) * rate;
                 const effectiveCostBasis = grossStockCostBasis - putPremiumRealized;
                 if (!stockLots.has(baseSymbol)) stockLots.set(baseSymbol, []);
-                const newLot = { quantity: sharesAcquired, costBasis: effectiveCostBasis, acquisitionDate: trade.parsedDate, covered: false };
+                const newLot = { quantity: sharesAcquired, costBasis: effectiveCostBasis, acquisitionDate: trade.parsedDate, coveredShares: 0 };
                 stockLots.get(baseSymbol)?.push(newLot);
                 const lotIndex = stockLots.get(baseSymbol)!.length - 1;
                 inProgressCycles.set(`${baseSymbol}-${lotIndex}`, {
@@ -437,28 +437,38 @@ function analyzeWheelCycles(trades: any[], exchangeRates: { [key: string]: numbe
         // Covered Call Premium
         else if (isOption && optionType === 'C' && quantity < 0 && code.includes('O')) {
             const contractsSold = Math.abs(quantity);
+            const multiplier = instrumentMultipliers.get(trade.Symbol.trim()) || 100;
+            let sharesToCover = contractsSold * multiplier;
+            const totalPremiumForTrade = proceeds + commFee;
+
             const lotsForSymbol = stockLots.get(baseSymbol);
 
             if (lotsForSymbol) {
-                let assignedContracts = 0;
                 for (let i = 0; i < lotsForSymbol.length; i++) {
-                    if (assignedContracts >= contractsSold) break;
-                    
+                    if (sharesToCover <= 0) break;
+
                     const lot = lotsForSymbol[i];
-                    if (!lot.covered) {
+                    const availableShares = lot.quantity - lot.coveredShares;
+                    
+                    if (availableShares > 0) {
+                        const sharesInThisLotToCover = Math.min(sharesToCover, availableShares);
+                        
                         const cycleKey = `${baseSymbol}-${i}`;
                         const cycle = inProgressCycles.get(cycleKey);
 
                         if (cycle && cycle.tradeLog) {
-                            const premiumPerContract = (proceeds + commFee) / contractsSold;
-                            cycle.totalCallPremium = (cycle.totalCallPremium || 0) + premiumPerContract;
+                            // Apportion the premium based on shares being covered vs total shares in trade
+                            const premiumForThisLot = totalPremiumForTrade * (sharesInThisLotToCover / (contractsSold * multiplier));
+
+                            cycle.totalCallPremium = (cycle.totalCallPremium || 0) + premiumForThisLot;
                             cycle.tradeLog.push({
                                 date: trade.parsedDate.toISOString().split('T')[0],
                                 description: `Call Premium (${trade.Symbol})`,
-                                amount: premiumPerContract
+                                amount: premiumForThisLot
                             });
-                            lot.covered = true;
-                            assignedContracts++;
+
+                            lot.coveredShares += sharesInThisLotToCover;
+                            sharesToCover -= sharesInThisLotToCover;
                         }
                     }
                 }
@@ -468,18 +478,21 @@ function analyzeWheelCycles(trades: any[], exchangeRates: { [key: string]: numbe
         // Closing a short call (expiration or buy-to-close) -> makes a lot available again
         else if (isOption && optionType === 'C' && quantity > 0 && (code.includes('C') || code.includes('Ep'))) {
             const contractsClosed = quantity;
+            const multiplier = instrumentMultipliers.get(trade.Symbol.trim()) || 100;
+            let sharesToUncover = contractsClosed * multiplier;
+            
             const lotsForSymbol = stockLots.get(baseSymbol);
 
             if (lotsForSymbol) {
-                let unassignedContracts = 0;
                 // FIFO for un-covering
                 for (let i = 0; i < lotsForSymbol.length; i++) {
-                    if (unassignedContracts >= contractsClosed) break;
+                    if (sharesToUncover <= 0) break;
                     
                     const lot = lotsForSymbol[i];
-                    if (lot.covered) {
-                        lot.covered = false;
-                        unassignedContracts++;
+                    if (lot.coveredShares > 0) {
+                        const sharesInThisLotToUncover = Math.min(sharesToUncover, lot.coveredShares);
+                        lot.coveredShares -= sharesInThisLotToUncover;
+                        sharesToUncover -= sharesInThisLotToUncover;
                     }
                 }
             }
