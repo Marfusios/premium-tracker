@@ -1,4 +1,3 @@
-
 export const es = {
     app: {
         title: "Analizador de Cartera IBKR",
@@ -112,6 +111,8 @@ export const es = {
             legend: {
                 optionsPremium: "Prima de Opciones",
                 optionsPL: "P/G de Opciones",
+                stocksPL: "P/G de Acciones",
+                forexPL: "P/G de Forex",
                 syepIncome: "Ingresos SYEP",
                 interest: "Intereses"
             },

@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import TooltipComponent from '../Tooltip';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -23,10 +22,50 @@ interface AllocationChartsProps {
 const AllocationCharts: React.FC<AllocationChartsProps> = ({ portfolioAllocation, assetClassAllocation, formatInSelectedCurrency, allocationFilters, onAllocationFilterChange, tooltipFormatter }) => {
     const { t } = useLocalization();
 
-    const translatedAssetClassAllocation = assetClassAllocation.map(item => ({
+    const translatedAssetClassAllocation = useMemo(() => assetClassAllocation.map(item => ({
         ...item,
         name: t(`dashboard.allocations.assetClasses.${item.name.toLowerCase()}`)
-    }));
+    })), [assetClassAllocation, t]);
+
+    // State for Ticker Allocation Chart
+    const portfolioTickers = useMemo(() => portfolioAllocation.map(item => item.name), [portfolioAllocation]);
+    const [activeTickers, setActiveTickers] = useState(portfolioTickers);
+
+    // State for Asset Class Allocation Chart
+    const assetClasses = useMemo(() => translatedAssetClassAllocation.map(item => item.name), [translatedAssetClassAllocation]);
+    const [activeAssetClasses, setActiveAssetClasses] = useState(assetClasses);
+
+    // Reset active tickers when the underlying data changes due to filtering
+    useEffect(() => {
+        setActiveTickers(portfolioTickers);
+    }, [portfolioTickers]);
+    
+    useEffect(() => {
+        setActiveAssetClasses(assetClasses);
+    }, [assetClasses]);
+
+
+    const handleTickerLegendClick = (data: any) => {
+        const { value } = data.payload;
+        setActiveTickers(current => 
+            current.includes(value) 
+                ? current.filter(name => name !== value)
+                : [...current, value]
+        );
+    };
+
+    const handleAssetClassLegendClick = (data: any) => {
+        const { value } = data.payload;
+        setActiveAssetClasses(current => 
+            current.includes(value) 
+                ? current.filter(name => name !== value)
+                : [...current, value]
+        );
+    };
+
+    const filteredPortfolioAllocation = portfolioAllocation.filter(item => activeTickers.includes(item.name));
+    const filteredAssetClassAllocation = translatedAssetClassAllocation.filter(item => activeAssetClasses.includes(item.name));
+
 
     const defaultTooltipFormatter = (value: number) => formatInSelectedCurrency(value);
 
@@ -62,11 +101,11 @@ const AllocationCharts: React.FC<AllocationChartsProps> = ({ portfolioAllocation
             </div>
             <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                    <Pie data={portfolioAllocation} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label={(entry) => `${(entry.percent * 100).toFixed(0)}%`}>
-                        {portfolioAllocation.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                    <Pie data={filteredPortfolioAllocation} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label={(entry) => `${(entry.percent * 100).toFixed(0)}%`}>
+                        {filteredPortfolioAllocation.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                     </Pie>
                     <Tooltip formatter={tooltipFormatter || defaultTooltipFormatter} />
-                    <Legend />
+                    <Legend onClick={handleTickerLegendClick} />
                 </PieChart>
             </ResponsiveContainer>
         </div>
@@ -74,11 +113,11 @@ const AllocationCharts: React.FC<AllocationChartsProps> = ({ portfolioAllocation
             <h3 className="text-xl font-semibold mb-4">{t('dashboard.allocations.byAssetClassTitle')}</h3>
             <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                    <Pie data={translatedAssetClassAllocation} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label={(entry) => `${(entry.percent * 100).toFixed(0)}%`}>
-                        {translatedAssetClassAllocation.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                    <Pie data={filteredAssetClassAllocation} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label={(entry) => `${(entry.percent * 100).toFixed(0)}%`}>
+                        {filteredAssetClassAllocation.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                     </Pie>
                     <Tooltip formatter={tooltipFormatter || defaultTooltipFormatter} />
-                    <Legend />
+                    <Legend onClick={handleAssetClassLegendClick}/>
                 </PieChart>
             </ResponsiveContainer>
         </div>

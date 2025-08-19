@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { MonthlySummary } from '../../types';
@@ -13,6 +12,19 @@ interface MonthlyPerformanceChartProps {
 const MonthlyPerformanceChart: React.FC<MonthlyPerformanceChartProps> = ({ data, valueFormatter, tooltipValueFormatter }) => {
     const { t, locale } = useLocalization();
     const [mode, setMode] = useState<'income' | 'pl'>('income');
+    const [activeSeries, setActiveSeries] = useState({
+        optionsPremium: true,
+        optionsPL: true,
+        stocksPL: true,
+        forexPL: true,
+        syepIncome: true,
+        interest: true,
+    });
+
+    const handleLegendClick = (o: any) => {
+        const { dataKey } = o;
+        setActiveSeries(prev => ({...prev, [dataKey]: !prev[dataKey]}));
+    };
     
     if (!data || data.length === 0) {
         return null;
@@ -31,8 +43,6 @@ const MonthlyPerformanceChart: React.FC<MonthlyPerformanceChartProps> = ({ data,
         };
     });
 
-    const optionsDataKey = mode === 'income' ? 'optionsPremium' : 'optionsPL';
-    const optionsLabel = mode === 'income' ? t('dashboard.monthlyPerformance.legend.optionsPremium') : t('dashboard.monthlyPerformance.legend.optionsPL');
     const finalTooltipFormatter = tooltipValueFormatter || valueFormatter;
 
     const CustomTooltip = ({ active, payload, label }: any) => {
@@ -72,10 +82,19 @@ const MonthlyPerformanceChart: React.FC<MonthlyPerformanceChartProps> = ({ data,
                     <XAxis dataKey="month" stroke="#a0aec0" />
                     <YAxis stroke="#a0aec0" tickFormatter={valueFormatter} />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(113, 128, 150, 0.1)' }}/>
-                    <Legend wrapperStyle={{ color: '#edf2f7' }} />
-                    <Bar dataKey={optionsDataKey} stackId="a" name={optionsLabel} fill="#38b2ac" />
-                    <Bar dataKey="syepIncome" stackId="a" name={t('dashboard.monthlyPerformance.legend.syepIncome')} fill="#4299e1" />
-                    <Bar dataKey="interest" stackId="a" name={t('dashboard.monthlyPerformance.legend.interest')} fill="#9f7aea" />
+                    <Legend wrapperStyle={{ color: '#edf2f7' }} onClick={handleLegendClick} />
+
+                    {mode === 'income' ? (
+                        <Bar dataKey="optionsPremium" hide={!activeSeries.optionsPremium} stackId="a" name={t('dashboard.monthlyPerformance.legend.optionsPremium')} fill="#38b2ac" />
+                    ) : (
+                        <>
+                            <Bar dataKey="optionsPL" hide={!activeSeries.optionsPL} stackId="a" name={t('dashboard.monthlyPerformance.legend.optionsPL')} fill="#38b2ac" />
+                            <Bar dataKey="stocksPL" hide={!activeSeries.stocksPL} stackId="a" name={t('dashboard.monthlyPerformance.legend.stocksPL')} fill="#ed8936" />
+                            <Bar dataKey="forexPL" hide={!activeSeries.forexPL} stackId="a" name={t('dashboard.monthlyPerformance.legend.forexPL')} fill="#4299e1" />
+                        </>
+                    )}
+                    <Bar dataKey="syepIncome" hide={!activeSeries.syepIncome} stackId="a" name={t('dashboard.monthlyPerformance.legend.syepIncome')} fill="#9f7aea" />
+                    <Bar dataKey="interest" hide={!activeSeries.interest} stackId="a" name={t('dashboard.monthlyPerformance.legend.interest')} fill="#667eea" />
                 </BarChart>
             </ResponsiveContainer>
         </div>

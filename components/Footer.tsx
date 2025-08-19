@@ -16,9 +16,15 @@ const Footer: React.FC = () => {
           <p className="text-brand-text-secondary">
             {t('footer.createdBy')} Mariusz Kotas
           </p>
-          <a href="mailto:m@mkotas.cz" className="text-brand-accent hover:text-brand-accent-hover transition-colors">
-            m@mkotas.cz
-          </a>
+          <div className="flex justify-center items-center space-x-4 mt-1">
+             <a href="mailto:m@mkotas.cz" className="text-brand-accent hover:text-brand-accent-hover transition-colors">
+                m@mkotas.cz
+             </a>
+             <span className="text-brand-text-secondary">&bull;</span>
+             <a href="https://premiumtracker.app/" target="_blank" rel="noopener noreferrer" className="text-brand-accent hover:text-brand-accent-hover transition-colors">
+                premiumtracker.app
+             </a>
+          </div>
           <p className="text-xs text-brand-text-secondary mt-4">
             {t('footer.version')}: {APP_VERSION}
           </p>

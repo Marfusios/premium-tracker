@@ -1,4 +1,3 @@
-
 export const hr = {
     app: {
         title: "IBKR Analizator Portfelja",
@@ -112,6 +111,8 @@ export const hr = {
             legend: {
                 optionsPremium: "Premija od opcija",
                 optionsPL: "D/G od opcija",
+                stocksPL: "D/G od dionica",
+                forexPL: "D/G od Forexa",
                 syepIncome: "Prihod od SYEP-a",
                 interest: "Kamate"
             },

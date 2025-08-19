@@ -1,4 +1,3 @@
-
 import { ParsedData, Position, ClosedPosition, ArocTrade, WheelCycle, WheelCycleAnalysis, WheelCycleTrade, PendingWheelCycle, MonthlySummary, TickerPL, NAVChange, ShortPutIncomeSummary } from '../types';
 
 const safeParseFloat = (val: string): number => {
@@ -105,14 +104,15 @@ function analyzeShortPutIncome(trades: any[], exchangeRates: { [key: string]: nu
 }
 
 function analyzeMonthlySummary(
-    trades: any[], 
+    trades: any[],
+    forexPlDetails: any[],
     syepInterest: any[], 
     brokerInterest: any[],
     otherFees: any[],
     cashReport: any[],
     exchangeRates: { [key: string]: number }
 ): MonthlySummary[] {
-    const summaryByMonth: { [month: string]: { optionsPL: number; optionsPremium: number; syepIncome: number; interest: number; commissions: number; fees: number; interestPaid: number; salesTax: number; } } = {};
+    const summaryByMonth: { [month: string]: { optionsPL: number; optionsPremium: number; stocksPL: number; forexPL: number; syepIncome: number; interest: number; commissions: number; fees: number; interestPaid: number; salesTax: number; } } = {};
 
     const getMonthKey = (date: Date): string => {
         return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -120,17 +120,14 @@ function analyzeMonthlySummary(
     
     const ensureMonthKey = (key: string) => {
         if (!summaryByMonth[key]) {
-            summaryByMonth[key] = { optionsPL: 0, optionsPremium: 0, syepIncome: 0, interest: 0, commissions: 0, fees: 0, interestPaid: 0, salesTax: 0 };
+            summaryByMonth[key] = { optionsPL: 0, optionsPremium: 0, stocksPL: 0, forexPL: 0, syepIncome: 0, interest: 0, commissions: 0, fees: 0, interestPaid: 0, salesTax: 0 };
         }
     };
 
-    // 1. Options Realized P/L from Closing Trades
-    const optionClosingTrades = (trades || []).filter(r => 
-        r['Asset Category'] === 'Equity and Index Options' &&
-        r['Realized P/L'] && safeParseFloat(r['Realized P/L']) !== 0
-    );
+    // 1. Realized P/L from trades
+    const realizedPlTrades = (trades || []).filter(r => r['DataDiscriminator'] === 'Order');
 
-    for (const trade of optionClosingTrades) {
+    for (const trade of realizedPlTrades) {
         const date = new Date(trade['Date/Time'].replace(',', ''));
         if (isNaN(date.getTime())) continue;
 
@@ -139,9 +136,42 @@ function analyzeMonthlySummary(
         
         const currency = trade['Currency'];
         const rate = exchangeRates[currency] || 1;
-        const realizedPL = safeParseFloat(trade['Realized P/L']) * rate;
-        
-        summaryByMonth[monthKey].optionsPL += realizedPL;
+        const category = trade['Asset Category'];
+
+        if (category === 'Equity and Index Options' || category === 'Stocks') {
+            const realizedPL = safeParseFloat(trade['Realized P/L']) * rate;
+            if (realizedPL !== 0) {
+                if (category === 'Equity and Index Options') {
+                    summaryByMonth[monthKey].optionsPL += realizedPL;
+                } else {
+                    summaryByMonth[monthKey].stocksPL += realizedPL;
+                }
+            }
+        } else if (category === 'Forex') {
+            // MTM P/L is used for Forex spot conversions as Realized P/L is often missing/zero.
+            const mtmPlKey = Object.keys(trade).find(k => k.startsWith('MTM'));
+            if (mtmPlKey) {
+                const mtmPL = safeParseFloat(trade[mtmPlKey]);
+                summaryByMonth[monthKey].forexPL += mtmPL;
+            }
+        }
+    }
+
+
+    // 1b. Realized P/L from Forex P/L Details section (currency fluctuations)
+    if (forexPlDetails) {
+        const forexRows = forexPlDetails.filter(r => r['Realized P/L'] && safeParseFloat(r['Realized P/L']) !== 0);
+        for (const row of forexRows) {
+            const date = new Date(row['Date']); // Date format is simpler here
+            if (isNaN(date.getTime())) continue;
+
+            const monthKey = getMonthKey(date);
+            ensureMonthKey(monthKey);
+
+            // In this section, P/L is already in the base currency.
+            const realizedPL = safeParseFloat(row['Realized P/L']);
+            summaryByMonth[monthKey].forexPL += realizedPL;
+        }
     }
     
     // 2. Options Premium from Opening Trades (Income)
@@ -220,10 +250,12 @@ function analyzeMonthlySummary(
 
         const currency = trade['Currency'];
         const rate = exchangeRates[currency] || 1;
-        const commission = safeParseFloat(trade['Comm/Fee']); // This is negative
         
-        // Storing as a positive number for easier charting (costs are positive)
-        summaryByMonth[monthKey].commissions += Math.abs(commission * rate);
+        const commissionKey = Object.keys(trade).find(k => k.toLowerCase().startsWith('comm'));
+        if(commissionKey) {
+            const commission = safeParseFloat(trade[commissionKey]); // This is negative
+            summaryByMonth[monthKey].commissions += Math.abs(commission * rate);
+        }
     }
     
     // 6. Other Fees
@@ -289,7 +321,7 @@ function analyzeMonthlySummary(
 
 function analyzeWheelCycles(trades: any[], exchangeRates: { [key: string]: number }, baseCurrency: string, instrumentMultipliers: Map<string, number>, openPositions: Position[]): WheelCycleAnalysis {
     const completedCycles: WheelCycle[] = [];
-    const stockLots = new Map<string, { quantity: number; costBasis: number; acquisitionDate: Date }[]>();
+    const stockLots = new Map<string, { quantity: number; costBasis: number; acquisitionDate: Date; covered: boolean }[]>();
     const inProgressCycles = new Map<string, Partial<WheelCycle> & { lotIndex: number }>();
     const openShortPuts = new Map<string, any[]>();
 
@@ -352,7 +384,8 @@ function analyzeWheelCycles(trades: any[], exchangeRates: { [key: string]: numbe
                 const newLot = {
                     quantity: sharesAcquired,
                     costBasis: effectiveCostBasis,
-                    acquisitionDate: trade.parsedDate
+                    acquisitionDate: trade.parsedDate,
+                    covered: false
                 };
                 stockLots.get(baseSymbol)?.push(newLot);
                 const lotIndex = stockLots.get(baseSymbol)!.length - 1;
@@ -388,7 +421,7 @@ function analyzeWheelCycles(trades: any[], exchangeRates: { [key: string]: numbe
                 const grossStockCostBasis = (strikePrice! * sharesAcquired) * rate;
                 const effectiveCostBasis = grossStockCostBasis - putPremiumRealized;
                 if (!stockLots.has(baseSymbol)) stockLots.set(baseSymbol, []);
-                const newLot = { quantity: sharesAcquired, costBasis: effectiveCostBasis, acquisitionDate: trade.parsedDate };
+                const newLot = { quantity: sharesAcquired, costBasis: effectiveCostBasis, acquisitionDate: trade.parsedDate, covered: false };
                 stockLots.get(baseSymbol)?.push(newLot);
                 const lotIndex = stockLots.get(baseSymbol)!.length - 1;
                 inProgressCycles.set(`${baseSymbol}-${lotIndex}`, {
@@ -403,15 +436,51 @@ function analyzeWheelCycles(trades: any[], exchangeRates: { [key: string]: numbe
 
         // Covered Call Premium
         else if (isOption && optionType === 'C' && quantity < 0 && code.includes('O')) {
-            for (const cycle of inProgressCycles.values()) {
-                if (cycle.symbol === baseSymbol && cycle.tradeLog) {
-                    const callPremium = proceeds + commFee;
-                    cycle.totalCallPremium = (cycle.totalCallPremium || 0) + callPremium;
-                    cycle.tradeLog.push({
-                        date: trade.parsedDate.toISOString().split('T')[0],
-                        description: `Call Premium (${trade.Symbol})`,
-                        amount: callPremium
-                    });
+            const contractsSold = Math.abs(quantity);
+            const lotsForSymbol = stockLots.get(baseSymbol);
+
+            if (lotsForSymbol) {
+                let assignedContracts = 0;
+                for (let i = 0; i < lotsForSymbol.length; i++) {
+                    if (assignedContracts >= contractsSold) break;
+                    
+                    const lot = lotsForSymbol[i];
+                    if (!lot.covered) {
+                        const cycleKey = `${baseSymbol}-${i}`;
+                        const cycle = inProgressCycles.get(cycleKey);
+
+                        if (cycle && cycle.tradeLog) {
+                            const premiumPerContract = (proceeds + commFee) / contractsSold;
+                            cycle.totalCallPremium = (cycle.totalCallPremium || 0) + premiumPerContract;
+                            cycle.tradeLog.push({
+                                date: trade.parsedDate.toISOString().split('T')[0],
+                                description: `Call Premium (${trade.Symbol})`,
+                                amount: premiumPerContract
+                            });
+                            lot.covered = true;
+                            assignedContracts++;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Closing a short call (expiration or buy-to-close) -> makes a lot available again
+        else if (isOption && optionType === 'C' && quantity > 0 && (code.includes('C') || code.includes('Ep'))) {
+            const contractsClosed = quantity;
+            const lotsForSymbol = stockLots.get(baseSymbol);
+
+            if (lotsForSymbol) {
+                let unassignedContracts = 0;
+                // FIFO for un-covering
+                for (let i = 0; i < lotsForSymbol.length; i++) {
+                    if (unassignedContracts >= contractsClosed) break;
+                    
+                    const lot = lotsForSymbol[i];
+                    if (lot.covered) {
+                        lot.covered = false;
+                        unassignedContracts++;
+                    }
                 }
             }
         }
@@ -514,31 +583,46 @@ export function parseIbkrCsv(csvString: string): ParsedData {
     let currentSection = '';
     let headers: string[] = [];
 
+    // More robust parser that handles multiple header rows within a single section (e.g., Trades section)
+    const allData: {section: string, headers: string[], data: string[][]}[] = [];
+    let currentBlock: {section: string, headers: string[], data: string[][]} | null = null;
+
     for (const line of lines) {
         const columns = parseCsvLine(line);
         if (columns.length < 2) continue;
-
         const sectionName = columns[0].trim();
         const dataType = columns[1].trim();
-        
-        if(sectionName !== currentSection) {
-            currentSection = sectionName;
-            headers = [];
-        }
 
         if (dataType === 'Header') {
-            headers = columns.map(h => h.trim());
-        } else if (dataType === 'Data' && headers.length > 0) {
-            if (!sections[sectionName]) {
-                sections[sectionName] = [];
+            if (currentBlock) {
+                allData.push(currentBlock);
             }
+            currentBlock = {
+                section: sectionName,
+                headers: columns.map(h => h.trim()),
+                data: []
+            };
+        } else if (dataType === 'Data' && currentBlock) {
+            currentBlock.data.push(columns);
+        }
+    }
+    if (currentBlock) {
+        allData.push(currentBlock);
+    }
+
+    for (const block of allData) {
+        if (!sections[block.section]) {
+            sections[block.section] = [];
+        }
+        const blockHeaders = block.headers;
+        for (const dataRow of block.data) {
             const row: Record<string, string> = {};
-            columns.forEach((col, i) => {
-                if (headers[i]) {
-                    row[headers[i]] = col.trim();
+            dataRow.forEach((col, i) => {
+                if (blockHeaders[i]) {
+                    row[blockHeaders[i]] = col.trim();
                 }
             });
-            sections[sectionName].push(row);
+            sections[block.section].push(row);
         }
     }
 
@@ -901,6 +985,7 @@ export function parseIbkrCsv(csvString: string): ParsedData {
     
     data.monthlySummary = analyzeMonthlySummary(
         sections['Trades'],
+        sections['Forex P/L Details'],
         sections['Stock Yield Enhancement Program Securities Lent Interest Details'],
         sections['Interest'],
         sections['Fees'],

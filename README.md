@@ -42,6 +42,12 @@ This tool processes your entire activity statement CSV file directly in your bro
 
 **Important**: Do not open and re-save the CSV file in spreadsheet software like Excel, as it may alter the date/number formatting and cause parsing errors.
 
+## 🖼️ Screenshot
+
+<p align="center">
+  <img src="/img/premiumtracker-example.png" alt="IBKR Portfolio Analyzer Screenshot" width="800">
+</p>
+
 ## 🛠️ Tech Stack
 
 -   **Frontend**: [React](https://reactjs.org/), [TypeScript](https://www.typescriptlang.org/)

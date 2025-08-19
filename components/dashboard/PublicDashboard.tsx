@@ -118,6 +118,8 @@ const PublicDashboard: React.FC<PublicDashboardProps> = ({ data, dashboardData, 
             ...item,
             optionsPL: item.optionsPL / totalNAV,
             optionsPremium: item.optionsPremium / totalNAV,
+            stocksPL: (item.stocksPL || 0) / totalNAV,
+            forexPL: (item.forexPL || 0) / totalNAV,
             syepIncome: item.syepIncome / totalNAV,
             interest: item.interest / totalNAV,
         }));

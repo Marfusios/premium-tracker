@@ -118,6 +118,8 @@ export interface MonthlySummary {
     month: string; // "YYYY-MM" format
     optionsPL: number;
     optionsPremium: number;
+    stocksPL?: number;
+    forexPL?: number;
     syepIncome: number;
     interest: number;
     interestPaid: number;

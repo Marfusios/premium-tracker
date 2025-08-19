@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { MonthlySummary } from '../../types';
 import { useLocalization } from '../../context/LocalizationContext';
@@ -11,6 +10,17 @@ interface FeesChartProps {
 
 const FeesChart: React.FC<FeesChartProps> = ({ data, formatInSelectedCurrency }) => {
     const { t, locale } = useLocalization();
+    const [activeSeries, setActiveSeries] = useState({
+        commissions: true,
+        fees: true,
+        salesTax: true,
+        interestPaid: true,
+    });
+    
+    const handleLegendClick = (o: any) => {
+        const { dataKey } = o;
+        setActiveSeries(prev => ({...prev, [dataKey]: !prev[dataKey]}));
+    };
     
     const filteredData = data.filter(item => item.commissions > 0 || item.fees > 0 || item.interestPaid > 0 || item.salesTax > 0);
     
@@ -58,11 +68,11 @@ const FeesChart: React.FC<FeesChartProps> = ({ data, formatInSelectedCurrency })
                     <XAxis dataKey="month" stroke="#a0aec0" />
                     <YAxis stroke="#a0aec0" tickFormatter={(value) => formatInSelectedCurrency(value).replace(/(\.00|,[0-9]{2})$/, '')} />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(113, 128, 150, 0.1)' }}/>
-                    <Legend wrapperStyle={{ color: '#edf2f7' }} />
-                    <Bar dataKey="commissions" stackId="a" name={t('dashboard.fees.legend.commissions')} fill="#ed8936" />
-                    <Bar dataKey="fees" stackId="a" name={t('dashboard.fees.legend.otherFees')} fill="#f56565" />
-                    <Bar dataKey="salesTax" stackId="a" name={t('dashboard.fees.legend.salesTax')} fill="#dd6b20" />
-                    <Bar dataKey="interestPaid" stackId="a" name={t('dashboard.fees.legend.paidInterest')} fill="#c53030" />
+                    <Legend wrapperStyle={{ color: '#edf2f7' }} onClick={handleLegendClick} />
+                    <Bar dataKey="commissions" hide={!activeSeries.commissions} stackId="a" name={t('dashboard.fees.legend.commissions')} fill="#ed8936" />
+                    <Bar dataKey="fees" hide={!activeSeries.fees} stackId="a" name={t('dashboard.fees.legend.otherFees')} fill="#f56565" />
+                    <Bar dataKey="salesTax" hide={!activeSeries.salesTax} stackId="a" name={t('dashboard.fees.legend.salesTax')} fill="#dd6b20" />
+                    <Bar dataKey="interestPaid" hide={!activeSeries.interestPaid} stackId="a" name={t('dashboard.fees.legend.paidInterest')} fill="#c53030" />
                 </BarChart>
             </ResponsiveContainer>
         </div>
